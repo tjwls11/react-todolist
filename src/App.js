@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import TodoBoard from './components/TodoBoard';
 import DatePicker from 'react-datepicker';
@@ -9,6 +9,18 @@ function App() {
   const [todoList, setTodoList] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
 
+  useEffect(() => {
+    const storedTodoList = localStorage.getItem('todoList');
+    if (storedTodoList) {
+      const parsedTodoList = JSON.parse(storedTodoList).map(item => ({
+        ...item,
+        date: new Date(item.date)
+      }));
+      setTodoList(parsedTodoList);
+    }
+  }, []);
+
+  // 추가 함수
   const addItem = () => {
     if (inputValue.trim() === '') {
       alert('Please write down the list');
@@ -18,43 +30,60 @@ function App() {
       alert('Please select a date');
       return;
     }
-    
+
     const newItem = {
       todo: inputValue,
-      date: selectedDate
+      date: selectedDate,
+      emoji: '📋'
     };
 
-    setTodoList([...todoList, newItem]);
+    // 기존 목록에 추가 및 날짜 기준으로 정렬
+    const updatedTodoList = [...todoList, newItem];
+    const sortedTodoList = updatedTodoList.sort((a, b) => a.date - b.date);
+    setTodoList(sortedTodoList);
+    localStorage.setItem('todoList', JSON.stringify(sortedTodoList));
+
     setInputValue('');
     setSelectedDate(null);
-  }
-
-  const handleDateChange = (date) => {
-    setSelectedDate(date);
   };
 
+  const handleDateChange = (date) => {
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    setSelectedDate(utcDate);
+  };
+
+  // 삭제 함수
   const deleteItem = (index) => {
-    const updatedList = [...todoList];
-    updatedList.splice(index, 1);
+    const updatedList = todoList.filter((_, i) => i !== index);
     setTodoList(updatedList);
+    localStorage.setItem('todoList', JSON.stringify(updatedList));
+  };
+
+  // 업데이트 함수
+  const updateTodoList = (newList) => {
+    setTodoList(newList);
+    localStorage.setItem('todoList', JSON.stringify(newList));
   };
 
   return (
     <div className='App'>
       <input
         value={inputValue}
-        type="text" 
+        type="text"
         onChange={(event) => setInputValue(event.target.value)}
       />
-      
-        <DatePicker
+      <DatePicker
         selected={selectedDate}
         onChange={handleDateChange}
         dateFormat="yyyy-MM-dd"
-        placeholderText="날짜를 선택하세요"
-       />
-        <button onClick={addItem}>추가</button>
-        <TodoBoard todoList={todoList} onDelete={deleteItem} />
+        placeholderText="Select a date"
+      />
+      <button onClick={addItem}>Add</button>
+      <TodoBoard
+        todoList={todoList}
+        onDelete={deleteItem}
+        onUpdate={updateTodoList}
+      />
     </div>
   );
 }
